@@ -39,7 +39,11 @@
 				],
 				"extensions": [
 					".ldoc"
-				]
+				],
+				"icon": {
+					"light": "./icon.svg",
+					"dark": "./icon.svg"
+				}
 			}
 		],
 		"grammars": [
