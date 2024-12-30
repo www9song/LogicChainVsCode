@@ -166,37 +166,11 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 
 	private _parseText(text: string): IParsedToken[] {
 		const r: IParsedToken[] = [];
-		///([:：、\|\?？\s\r\n]+)|([-=]>)|([\[【][^\]】]+[\]】])|([\(（][^\)）]+[\)）])/g
-		
 		interface Value { line: string, tokens: TokenInfo[] }
 		const lines = text.split(/\r\n|\r|\n/);
 		const modules = new Map<string, Value>();
-		const importedModules = new Set()
 		for (let i = 0; i < lines.length; i++) {
 			if (lines[i].length && lines[i].startsWith("//") == false) {
-				const importHeader = /^\s*(导入|import)[:：]/g.exec(lines[i])
-				if (importHeader) {
-					r.push({
-						line: i,
-						startCharacter: importHeader.index,
-						length: importHeader[0].length - 1,
-						tokenType: this._encodeTokenType("keyword"),
-						tokenModifiers: this._encodeTokenModifiers(["documentation"])
-					})
-					let startIndex = importHeader.index + importHeader[0].length
-					lines[i].slice(importHeader[0].length).split(/[ 、]/g).forEach((s, index) => {
-						r.push({
-							line: i,
-							startCharacter: startIndex,
-							length: s.length,
-							tokenType: this._encodeTokenType("class"),
-							tokenModifiers: this._encodeTokenModifiers(["documentation"])
-						})
-						startIndex += s.length + 1
-						importedModules.add(s)
-					})
-				}
-				else
 				{
 					const lineInfo = this.splitLine(lines[i], i)
 					if (lineInfo.length > 1) {
@@ -223,7 +197,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		}
 		const conditions: { check: (value: TokenInfo,line:string) => boolean, type: TokenType }[] = [
 			{
-				check: (value, line) => { return modules.has(value.name) || importedModules.has(value.name) },
+				check: (value, line) => { return modules.has(value.name) || informations.has(value.name) },
 				type:TokenType.FunctionCall
 			},
 			{
@@ -257,13 +231,13 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 			let modifiers ="documentation"
 			switch (value.tokenType) {
 				case TokenType.FunctionCall: ty = "function"; break;
-				case TokenType.Condition: ty = "property"; break;
-				case TokenType.Paramters: ty = "number"; break;
+				case TokenType.Condition: ty = informations.has(value.name) ? "property" : "operator"; break;
+				case TokenType.Paramters: ty = informations.has(value.name) ? "number" : "operator"; break;
 				case TokenType.needImplement: ty = "operator"; break;
 
 			}
 			const tokenType = this._encodeTokenType(ty)
-			const tokenModifiers =13123
+			const tokenModifiers = this._encodeTokenModifiers([modifiers])
 			return { startCharacter: value.startCharacter, length: value.length, line: value.line, tokenType:tokenType,tokenModifiers:tokenModifiers}
 		}
 		for (const [module, values] of modules.entries()) {
