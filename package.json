@@ -1,0 +1,74 @@
+{
+	"name": "logical",
+	"displayName": "LogicChain",
+	"description": "逻辑链条,梳理逻辑用",
+	"version": "0.4.0",
+	"publisher": "LogicChain",
+	"private": true,
+	"license": "MIT",
+	"icon": "./icon.png",
+	"engines": {
+		"vscode": "^1.74.0"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"languages": [
+			{
+				"id": "LogicChain",
+				"aliases": [
+					"LogicChain",
+					"LC"
+				],
+				"extensions": [
+					".logic",
+					".lc"
+				],
+				"configuration": "./language-configuration.json",
+				"icon": {
+					"light": "./icon.svg",
+					"dark": "./icon.svg"
+				}
+			},
+			{
+				"id": "LogicDocument",
+				"aliases": [
+					"ldoc"
+				],
+				"extensions": [
+					".ldoc"
+				]
+			}
+		],
+		"grammars": [
+			{
+				"language": "LogicChain",
+				"scopeName": "source.logic",
+				"path": "./logic.tmLanguage.json"
+			},
+			{
+				"language": "LogicDocument",
+				"scopeName": "source.ldoc",
+				"path": "./logic-document.json"
+			}
+		]
+	},
+	"scripts": {
+		"publish": "vsce publish minor --yes",
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint",
+		"watch": "tsc -watch -p ./"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.13.0",
+		"@stylistic/eslint-plugin": "^2.9.0",
+		"@types/node": "^20",
+		"@types/vscode": "^1.73.0",
+		"eslint": "^9.13.0",
+		"typescript": "^5.7.2",
+		"typescript-eslint": "^8.16.0"
+	}
+}

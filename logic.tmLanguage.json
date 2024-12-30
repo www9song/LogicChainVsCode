@@ -1,0 +1,86 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "lc",
+	"fileTypes": ["logic","lc"],
+	"patterns": [
+		{
+			"name": "comment.line",
+			"begin": "//",
+			"end": "$"
+		},
+		{
+			"include": "#keywords"
+		},
+		
+		{
+			"match": "(^[^:：/]+)([:：])",
+			"captures": {
+				"1": {
+					"name": "markup.heading"
+				},
+				"2": {
+					"name":"keyword.control"
+				}
+			}
+		},
+		
+		{
+	
+			"begin":"[\\(（,]",
+			"end": "[\\)）]",
+			"contentName":"entity.other.attribute-name",
+			"patterns": [
+				{
+					"name": "constant.numeric",
+					"match": "\\d+"
+				},
+				{
+					"name": "keyword.operator",
+					"match": "[\\+\\-\\*\\/%=><,，]"
+				},
+				{
+					"name": "keyword.other.unit",
+					"match": "[&|]"
+				}
+			]
+		},
+		{
+			"name":"entity.name.function",
+			"match": "\\b(\\w+)\\b"
+		},
+		{
+			"contentName":"entity.name.tag",
+			"begin": "\\[",
+			"end": "\\]",
+			"patterns": [
+				{
+					"name":"constant.numeric",
+					"match": "\\d+"
+				},
+				{
+					"name": "keyword.operator",
+					"match": "[\\+\\-\\*\\/%=><,，]"
+				},
+				{
+					"name":"keyword.other.unit",
+					"match":"[&|]"
+				}
+			]
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+				"name": "keyword.control",
+				"match": "[-=]>"
+				},
+				{
+					"name":"keyword.control",
+					"match": "[\\?？、|]"
+				}
+		]
+		}
+	},
+	"scopeName": "source.logic"
+}

@@ -1,0 +1,35 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "ldoc",
+	"fileTypes": ["ldoc"],
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"match": "^\t([^:]+)(:)(.+)",
+			"captures": {
+				"1": {
+					"name": "entity.name.class"
+				},
+				"2": {
+					"name": "invalid"
+				},
+				"3": {
+					"name": "string"
+				}
+			}
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword.control",
+					"match": "^[^:\t]+:"
+				}
+			]
+		}
+	},
+	"scopeName": "source.ldoc"
+}
