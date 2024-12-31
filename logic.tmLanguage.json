@@ -38,7 +38,7 @@
 	
 			"begin":"[\\(（,]",
 			"end": "[\\)）]",
-			"contentName":"entity.other.attribute-name",
+			"contentName":"keyword.other.unit",
 			"patterns": [
 				{
 					"name": "constant.numeric",
@@ -59,7 +59,7 @@
 			"match": "\\b(\\w+)\\b"
 		},
 		{
-			"contentName":"entity.name.tag",
+			"contentName":"entity.other.attribute-name",
 			"begin": "\\[",
 			"end": "\\]",
 			"patterns": [

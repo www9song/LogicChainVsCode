@@ -111,8 +111,8 @@ class HoverProvider implements vscode.HoverProvider {
 				return new vscode.Hover(new vscode.MarkdownString(doc, true))
 			}
 			else {
-				if (!comments.has(position.line)) {
-					return new vscode.Hover(new vscode.MarkdownString("* 未实现!!!", true))
+				if (!comments.has(position.line)&& isNaN(parseFloat(word))) {
+					return new vscode.Hover(new vscode.MarkdownString("*"+word+" 未实现!!!", true))
 				}
 			}
 		}
