@@ -48,7 +48,8 @@ defaultLibrary	For symbols that are part of the standard library.
 
 const tokenTypes = new Map<string, number>();
 const tokenModifiers = new Map<string, number>();
-
+interface Value { line: string, tokens: TokenInfo[],doc:string }
+const currentFileModules = new Map<string, Value>();
 const informations = new Map<string, string>()
 const moduleNames = new Map<string, string>()
 const moduleStartPrefix = new Set(["->", ":", "=>", "]", "】", "、", "："])
@@ -101,7 +102,16 @@ class HoverProvider implements vscode.HoverProvider {
 		if (range) {
 			const word = document.getText(range);
 			if (informations.has(word)) {
-				return new vscode.Hover(informations.get(word) as string);
+				return new vscode.Hover(new vscode.MarkdownString(informations.get(word) as string));
+			}
+			else if(currentFileModules.has(word))
+			{
+				const doc = currentFileModules.get(word)?.doc
+				return  new vscode.Hover(new vscode.MarkdownString(doc ,true))
+			}
+			else
+			{
+				return  new vscode.Hover(new vscode.MarkdownString("* 未实现模块" ,true))
 			}
 		}
 	}
@@ -198,15 +208,19 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 
 	private _parseText(text: string): IParsedToken[] {
 		const r: IParsedToken[] = [];
-		interface Value { line: string, tokens: TokenInfo[] }
+		
 		const lines = text.split(/\r\n|\r|\n/);
-		const modules = new Map<string, Value>();
+	
 		for (let i = 0; i < lines.length; i++) {
 			if (lines[i].length && lines[i].startsWith("//") == false) {
 				{
 					const lineInfo = this.splitLine(lines[i], i)
 					if (lineInfo.length > 1) {
-						modules.set(lineInfo[0].name, { line: lines[i], tokens: lineInfo.slice(1) })
+						let doc=""
+						if (i>0 && lines[i-1].startsWith("//")) {
+							doc = lines[i-1].slice(2)
+						}
+						currentFileModules.set(lineInfo[0].name, { line: lines[i], tokens: lineInfo.slice(1),doc:doc })
 					}
 				}
 
@@ -229,7 +243,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		}
 		const conditions: { check: (value: TokenInfo, line: string) => boolean, type: TokenType }[] = [
 			{
-				check: (value, line) => { return modules.has(value.name) || informations.has(value.name) },
+				check: (value, line) => { return currentFileModules.has(value.name) || informations.has(value.name) },
 				type: TokenType.FunctionCall
 			},
 			{
@@ -245,7 +259,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 				type: TokenType.needImplement
 			},
 		]
-		for (const [module, values] of modules.entries()) {
+		for (const [module, values] of currentFileModules.entries()) {
 			for (const value of values.tokens) {
 				for (const condition of conditions) {
 					if (condition.check(value, values.line)) {
@@ -269,7 +283,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 			const tokenModifiers = this._encodeTokenModifiers([modifiers])
 			return { startCharacter: value.startCharacter, length: value.length, line: value.line, tokenType: tokenType, tokenModifiers: tokenModifiers }
 		}
-		for (const [module, values] of modules.entries()) {
+		for (const [module, values] of currentFileModules.entries()) {
 			for (const value of values.tokens) {
 				if (value.tokenType) {
 					r.push(getParsedToken(value))
