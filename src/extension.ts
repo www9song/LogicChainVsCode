@@ -50,7 +50,9 @@ const tokenTypes = new Map<string, number>();
 const tokenModifiers = new Map<string, number>();
 
 const informations = new Map<string,string >()
-
+const moduleNames = new Map<string,string >()
+const moduleStartPrefix = new Set(["->",":","=>","]","】","、","："])
+const computeStartPrefix = new Set([">","<","=","%","+","-","*","/","|","&"])
 class CompletionItemProvider implements vscode.CompletionItemProvider {
 	provideCompletionItems(
 		document: vscode.TextDocument,
@@ -58,14 +60,35 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 		token: vscode.CancellationToken
 	): vscode.ProviderResult<vscode.CompletionItem[]> {
 		const completionItems: vscode.CompletionItem[] = [];
-		for (const [key, value] of informations.entries())
-		{
-			const item1 = new vscode.CompletionItem(key, vscode.CompletionItemKind.Text);
-			item1.detail = value;
-			item1.documentation = '插入 ' + key;
-			item1.insertText = key;
-			completionItems.push(item1);
+		document.positionAt
+		const line = document.lineAt(position);
+		if (line && !line.isEmptyOrWhitespace) {
+			const word = line.text.slice(line.text.length-1);
+			if (moduleStartPrefix.has(word) || moduleStartPrefix.has(line.text.slice(line.text.length-2))) {
+				for (const [key, value] of moduleNames.entries())
+				{
+					const item1 = new vscode.CompletionItem(key, vscode.CompletionItemKind.Text);
+					item1.detail = value;
+					item1.documentation = '插入 ' + key;
+					item1.insertText = key;
+					completionItems.push(item1);
+				}
+			}
+			else if(computeStartPrefix.has(word))
+			{
+				for (const [key, value] of informations.entries())
+				{
+					if (!moduleNames.has(key)) {
+						const item1 = new vscode.CompletionItem(key, vscode.CompletionItemKind.Text);
+						item1.detail = value;
+						item1.documentation = '插入 ' + key;
+						item1.insertText = key;
+						completionItems.push(item1);
+					}
+				}
+			}
 		}
+	
 		return completionItems;
 	}
 }
@@ -115,7 +138,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.languages.registerHoverProvider('LogicChain', new HoverProvider()));
 
 	// 注册 Hover 提供者
-	context.subscriptions.push(vscode.languages.registerCompletionItemProvider('LogicChain', new CompletionItemProvider(), '.'));
+	context.subscriptions.push(vscode.languages.registerCompletionItemProvider('LogicChain', new CompletionItemProvider(),...moduleStartPrefix,...computeStartPrefix));
 
 }
 
@@ -148,11 +171,18 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		const file = await vscode.workspace.fs.readFile(vscode.Uri.file(includeFilename))
 		if (file) {
 			const lines = file.toString().split(/\r\n|\r|\n/);
+			let typeIndex = 0
 			lines.forEach(l => {
 				if (l.startsWith("\t"))
 				{
 					const [key, doc] = l.slice(1).split(":")
-					informations.set(key,doc.slice(1,doc.length-1))
+					informations.set(key,doc)
+					if (typeIndex == 1) {
+						moduleNames.set(key,doc)
+					}
+				}
+				else{
+					typeIndex++
 				}
 			})
 		}
