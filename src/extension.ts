@@ -48,10 +48,11 @@ defaultLibrary	For symbols that are part of the standard library.
 
 const tokenTypes = new Map<string, number>();
 const tokenModifiers = new Map<string, number>();
-interface Value { line: string, tokens: TokenInfo[],doc:string }
+interface Value { line: string, tokens: TokenInfo[], doc: string }
 const currentFileModules = new Map<string, Value>();
 const informations = new Map<string, string>()
 const moduleNames = new Map<string, string>()
+const comments = new Set<number>()
 const moduleStartPrefix = new Set(["->", ":", "=>", "]", "】", "、", "："])
 const computeStartPrefix = new Set([">", "<", "=", "%", "+", "-", "*", "/", "|", "&", ",", "，"])
 class CompletionItemProvider implements vscode.CompletionItemProvider {
@@ -63,13 +64,13 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 		const completionItems: vscode.CompletionItem[] = [];
 
 		let word = ""
-		let range = document.getWordRangeAtPosition(new vscode.Position(position.line,position.character -1))
+		let range = document.getWordRangeAtPosition(new vscode.Position(position.line, position.character - 1))
 		if (!range) {
-			range = document.getWordRangeAtPosition(new vscode.Position(position.line,position.character -2))
+			range = document.getWordRangeAtPosition(new vscode.Position(position.line, position.character - 2))
 		}
 		if (range) {
 			word = document.getText(range)
-		} 
+		}
 		if (word != "") {
 			if (moduleNames.has(word)) {
 				for (const [key, value] of moduleNames.entries()) {
@@ -98,20 +99,21 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 }
 class HoverProvider implements vscode.HoverProvider {
 	provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
+
 		const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5]+/g);
 		if (range) {
 			const word = document.getText(range);
 			if (informations.has(word)) {
 				return new vscode.Hover(new vscode.MarkdownString(informations.get(word) as string));
 			}
-			else if(currentFileModules.has(word))
-			{
+			else if (currentFileModules.has(word)) {
 				const doc = currentFileModules.get(word)?.doc
-				return  new vscode.Hover(new vscode.MarkdownString(doc ,true))
+				return new vscode.Hover(new vscode.MarkdownString(doc, true))
 			}
-			else
-			{
-				return  new vscode.Hover(new vscode.MarkdownString("* 未实现模块" ,true))
+			else {
+				if (!comments.has(position.line)) {
+					return new vscode.Hover(new vscode.MarkdownString("* 未实现!!!", true))
+				}
 			}
 		}
 	}
@@ -182,6 +184,8 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		const includeFilename = path.join(path.dirname(document.fileName), "Documents", path.basename(document.fileName).replace(/\.\w+$/, "") + ".ldoc")
 
 		const file = await vscode.workspace.fs.readFile(vscode.Uri.file(includeFilename))
+		informations.clear()
+		moduleNames.clear()
 		if (file) {
 			const lines = file.toString().split(/\r\n|\r|\n/);
 			let typeIndex = 0
@@ -208,22 +212,25 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 
 	private _parseText(text: string): IParsedToken[] {
 		const r: IParsedToken[] = [];
-		
-		const lines = text.split(/\r\n|\r|\n/);
-	
-		for (let i = 0; i < lines.length; i++) {
-			if (lines[i].length && lines[i].startsWith("//") == false) {
-				{
-					const lineInfo = this.splitLine(lines[i], i)
-					if (lineInfo.length > 1) {
-						let doc=""
-						if (i>0 && lines[i-1].startsWith("//")) {
-							doc = lines[i-1].slice(2)
-						}
-						currentFileModules.set(lineInfo[0].name, { line: lines[i], tokens: lineInfo.slice(1),doc:doc })
-					}
-				}
 
+		const lines = text.split(/\r\n|\r|\n/);
+		comments.clear()
+		currentFileModules.clear()
+		for (let i = 0; i < lines.length; i++) {
+			if (lines[i].length) {
+				if (!lines[i].match(/\s*\/\//g)) {
+					const lineInfo = this.splitLine(lines[i], i)
+					if (lineInfo.length > 0) {
+						let doc = ""
+						if (i > 0 && lines[i - 1].match(/\s*\/\//g)) {
+							doc = lines[i - 1].slice(lines[i - 1].indexOf("//") + 2)
+						}
+						currentFileModules.set(lineInfo[0].name, { line: lines[i], tokens: lineInfo.slice(1), doc: doc })
+					}
+
+				} else {
+					comments.add(i)
+				}
 			}
 		}
 		function isInRange(line: string, start: string, end: string, value: TokenInfo): boolean {
@@ -294,12 +301,12 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		return r
 	}
 	private splitLine(line: string, lineIndex: number): TokenInfo[] {
-		const re: RegExp = /[a-zA-Z0-9\u4e00-\u9fa5]+/g
+		const re: RegExp = /^\s*[a-zA-Z0-9\u4e00-\u9fa5]+/g
 		const l: TokenInfo[] = []
 		let res = re.exec(line)
 		while (res != null) {
 			if (res.length > 0 && res[0].length && isNaN(parseFloat(res[0]))) {
-				l.push({ name: res[0], startCharacter: res.index, line: lineIndex, length: res[0].length })
+				l.push({ name: res[0].replace(/\s+/, ""), startCharacter: res.index, line: lineIndex, length: res[0].length })
 			}
 			res = re.exec(line)
 		}

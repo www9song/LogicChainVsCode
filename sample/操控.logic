@@ -41,4 +41,3 @@
 //公用逻辑
 放置士兵卡:放置士兵卡动画->扣减费用
 检查本轮是否结束：[(IsEnoughEnerty&CardNumInHand > 0) |AttackSoldiers>0]目标攻击?开始下一轮战斗
-开始下一轮战斗：确认先手->目标攻击
