@@ -48,7 +48,7 @@ defaultLibrary	For symbols that are part of the standard library.
 
 const tokenTypes = new Map<string, number>();
 const tokenModifiers = new Map<string, number>();
-interface Value { line: string, tokens: TokenInfo[], doc: string }
+interface Value { line: string, tokens: TokenInfo[], doc: string,position:vscode.Position}
 const currentFileModules = new Map<string, Value>();
 const informations = new Map<string, string>()
 const moduleNames = new Map<string, string>()
@@ -107,12 +107,15 @@ class HoverProvider implements vscode.HoverProvider {
 				return new vscode.Hover(new vscode.MarkdownString(informations.get(word) as string));
 			}
 			else if (currentFileModules.has(word)) {
-				const doc = currentFileModules.get(word)?.doc
-				return new vscode.Hover(new vscode.MarkdownString(doc, true))
+				const value:Value|undefined = currentFileModules.get(word)
+				if (value) {
+					return new vscode.Hover(new vscode.MarkdownString(value.doc || `第${ value.position.line + 1}行`, true))
+				}
+				
 			}
 			else {
 				if (!comments.has(position.line)&& isNaN(parseFloat(word))) {
-					return new vscode.Hover(new vscode.MarkdownString("*"+word+" 未实现!!!", true))
+					return new vscode.Hover(new vscode.MarkdownString("* 未实现!!!", true))
 				}
 			}
 		}
@@ -124,11 +127,14 @@ class DefinitionProvider implements vscode.DefinitionProvider {
 		if (wordRange) {
 			const word = document.getText(wordRange);
 			// 根据逻辑查找符号的定义
-			if (informations.has(word)) {
-				// const targetPosition = new vscode.Position(5, 1); // 目标定义位置
-				// const targetRange = new vscode.Range(targetPosition, targetPosition);
-				// const definitionLink = new vscode.DefinitionLink(targetRange, targetRange, document.uri);
-				// return [definitionLink];
+			if (currentFileModules.has(word)) {
+				const value:Value|undefined = currentFileModules.get(word)
+				if (value) {
+					const range = document.getWordRangeAtPosition(value.position, /[a-zA-Z0-9\u4e00-\u9fa5]+/g)
+					if (range) {
+						return {range:range,uri:document.uri}
+					}
+				}
 			}
 		}
 		return null
@@ -154,7 +160,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// 注册 Hover 提供者
 	context.subscriptions.push(vscode.languages.registerCompletionItemProvider('LogicChain', new CompletionItemProvider(), ...moduleStartPrefix, ...computeStartPrefix));
-
+	// 注册 Definition 提供者
+	context.subscriptions.push(vscode.languages.registerDefinitionProvider('LogicChain', new DefinitionProvider()));
 }
 
 interface IParsedToken {
@@ -218,14 +225,14 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		currentFileModules.clear()
 		for (let i = 0; i < lines.length; i++) {
 			if (lines[i].length) {
-				if (!lines[i].match(/\s*\/\//g)) {
+				if (!lines[i].match(/^\s*\/\//g)) {
 					const lineInfo = this.splitLine(lines[i], i)
 					if (lineInfo.length > 0) {
 						let doc = ""
-						if (i > 0 && lines[i - 1].match(/\s*\/\//g)) {
+						if (i > 0 && lines[i - 1].match(/^\s*\/\//g)) {
 							doc = lines[i - 1].slice(lines[i - 1].indexOf("//") + 2)
 						}
-						currentFileModules.set(lineInfo[0].name, { line: lines[i], tokens: lineInfo.slice(1), doc: doc })
+						currentFileModules.set(lineInfo[0].name, { line: lines[i], tokens: lineInfo.slice(1), doc: doc,position:new vscode.Position(lineInfo[0].line,lineInfo[0].startCharacter) })
 					}
 
 				} else {
@@ -301,12 +308,14 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		return r
 	}
 	private splitLine(line: string, lineIndex: number): TokenInfo[] {
-		const re: RegExp = /^\s*[a-zA-Z0-9\u4e00-\u9fa5]+/g
+		const re: RegExp = /\s*[a-zA-Z0-9\u4e00-\u9fa5]+/g
 		const l: TokenInfo[] = []
 		let res = re.exec(line)
 		while (res != null) {
 			if (res.length > 0 && res[0].length && isNaN(parseFloat(res[0]))) {
-				l.push({ name: res[0].replace(/\s+/, ""), startCharacter: res.index, line: lineIndex, length: res[0].length })
+				const name = res[0].replace(/\s*/, "")
+				const size = (res[0].length - name.length)
+				l.push({ name: res[0].replace(/\s*/, ""), startCharacter: res.index + size, line: lineIndex, length:name.length })
 			}
 			res = re.exec(line)
 		}
