@@ -104,18 +104,18 @@ class HoverProvider implements vscode.HoverProvider {
 		if (range) {
 			const word = document.getText(range);
 			if (informations.has(word)) {
-				return new vscode.Hover(new vscode.MarkdownString(informations.get(word) as string));
+				return new vscode.Hover(new vscode.MarkdownString("#### 导入模块\n* "  + informations.get(word) as string));
 			}
 			else if (currentFileModules.has(word)) {
 				const value:Value|undefined = currentFileModules.get(word)
 				if (value) {
-					return new vscode.Hover(new vscode.MarkdownString(value.doc || `第${ value.position.line + 1}行`, true))
+					return new vscode.Hover(new vscode.MarkdownString(value.doc || `#### 模块\n* 第${ value.position.line + 1}行`, true))
 				}
 				
 			}
 			else {
 				if (!comments.has(position.line)&& isNaN(parseFloat(word))) {
-					return new vscode.Hover(new vscode.MarkdownString("* 未实现!!!", true))
+					return new vscode.Hover(new vscode.MarkdownString("#### 缺失\n* 未实现!!!", true))
 				}
 			}
 		}
