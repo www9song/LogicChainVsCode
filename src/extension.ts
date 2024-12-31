@@ -49,10 +49,10 @@ defaultLibrary	For symbols that are part of the standard library.
 const tokenTypes = new Map<string, number>();
 const tokenModifiers = new Map<string, number>();
 
-const informations = new Map<string,string >()
-const moduleNames = new Map<string,string >()
-const moduleStartPrefix = new Set(["->",":","=>","]","】","、","："])
-const computeStartPrefix = new Set([">","<","=","%","+","-","*","/","|","&"])
+const informations = new Map<string, string>()
+const moduleNames = new Map<string, string>()
+const moduleStartPrefix = new Set(["->", ":", "=>", "]", "】", "、", "："])
+const computeStartPrefix = new Set([">", "<", "=", "%", "+", "-", "*", "/", "|", "&", ",", "，"])
 class CompletionItemProvider implements vscode.CompletionItemProvider {
 	provideCompletionItems(
 		document: vscode.TextDocument,
@@ -60,13 +60,18 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 		token: vscode.CancellationToken
 	): vscode.ProviderResult<vscode.CompletionItem[]> {
 		const completionItems: vscode.CompletionItem[] = [];
-		document.positionAt
-		const line = document.lineAt(position);
-		if (line && !line.isEmptyOrWhitespace) {
-			const word = line.text.slice(line.text.length-1);
-			if (moduleStartPrefix.has(word) || moduleStartPrefix.has(line.text.slice(line.text.length-2))) {
-				for (const [key, value] of moduleNames.entries())
-				{
+
+		let word = ""
+		let range = document.getWordRangeAtPosition(new vscode.Position(position.line,position.character -1))
+		if (!range) {
+			range = document.getWordRangeAtPosition(new vscode.Position(position.line,position.character -2))
+		}
+		if (range) {
+			word = document.getText(range)
+		} 
+		if (word != "") {
+			if (moduleNames.has(word)) {
+				for (const [key, value] of moduleNames.entries()) {
 					const item1 = new vscode.CompletionItem(key, vscode.CompletionItemKind.Text);
 					item1.detail = value;
 					item1.documentation = '插入 ' + key;
@@ -74,10 +79,8 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 					completionItems.push(item1);
 				}
 			}
-			else if(computeStartPrefix.has(word))
-			{
-				for (const [key, value] of informations.entries())
-				{
+			else {
+				for (const [key, value] of informations.entries()) {
 					if (!moduleNames.has(key)) {
 						const item1 = new vscode.CompletionItem(key, vscode.CompletionItemKind.Text);
 						item1.detail = value;
@@ -88,7 +91,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 				}
 			}
 		}
-	
+
 		return completionItems;
 	}
 }
@@ -133,12 +136,12 @@ export function activate(context: vscode.ExtensionContext) {
 		tokenModifiers: defaultTokenModifiers,
 	}));
 
-	
+
 	// 注册 Hover 提供者
 	context.subscriptions.push(vscode.languages.registerHoverProvider('LogicChain', new HoverProvider()));
 
 	// 注册 Hover 提供者
-	context.subscriptions.push(vscode.languages.registerCompletionItemProvider('LogicChain', new CompletionItemProvider(),...moduleStartPrefix,...computeStartPrefix));
+	context.subscriptions.push(vscode.languages.registerCompletionItemProvider('LogicChain', new CompletionItemProvider(), ...moduleStartPrefix, ...computeStartPrefix));
 
 }
 
@@ -149,13 +152,13 @@ interface IParsedToken {
 	tokenType: number;
 	tokenModifiers: number;
 }
-enum TokenType{
+enum TokenType {
 	FunctionCall,
 	Condition,
 	Paramters,
 	needImplement
 }
-interface TokenInfo{
+interface TokenInfo {
 	name: string;
 	line: number;
 	startCharacter: number;
@@ -173,15 +176,14 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 			const lines = file.toString().split(/\r\n|\r|\n/);
 			let typeIndex = 0
 			lines.forEach(l => {
-				if (l.startsWith("\t"))
-				{
+				if (l.startsWith("\t")) {
 					const [key, doc] = l.slice(1).split(":")
-					informations.set(key,doc)
+					informations.set(key, doc)
 					if (typeIndex == 1) {
-						moduleNames.set(key,doc)
+						moduleNames.set(key, doc)
 					}
 				}
-				else{
+				else {
 					typeIndex++
 				}
 			})
@@ -207,28 +209,28 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 						modules.set(lineInfo[0].name, { line: lines[i], tokens: lineInfo.slice(1) })
 					}
 				}
-				
+
 			}
 		}
 		function isInRange(line: string, start: string, end: string, value: TokenInfo): boolean {
-			
-			const forwardEndIndex = line.indexOf(end, value.startCharacter) 
+
+			const forwardEndIndex = line.indexOf(end, value.startCharacter)
 			if (forwardEndIndex != -1) {
 				const forwardStartIndex = line.indexOf(start, value.startCharacter)
 				return forwardStartIndex == -1 || forwardEndIndex < forwardStartIndex
 			}
 			const behindStartIndex = line.lastIndexOf(start, value.startCharacter)
-			
+
 			if (behindStartIndex != -1) {
 				const behindEndIndex = line.lastIndexOf(end, value.startCharacter)
 				return behindEndIndex == -1 || behindStartIndex > behindEndIndex
 			}
 			return false
 		}
-		const conditions: { check: (value: TokenInfo,line:string) => boolean, type: TokenType }[] = [
+		const conditions: { check: (value: TokenInfo, line: string) => boolean, type: TokenType }[] = [
 			{
 				check: (value, line) => { return modules.has(value.name) || informations.has(value.name) },
-				type:TokenType.FunctionCall
+				type: TokenType.FunctionCall
 			},
 			{
 				check: (value, line) => { return isInRange(line, "[", "]", value) || isInRange(line, '【', '】', value) },
@@ -243,13 +245,10 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 				type: TokenType.needImplement
 			},
 		]
-		for (const [module,values] of modules.entries())
-		{
-			for (const value of values.tokens)
-			{
-				for (const condition of conditions)
-				{
-					if (condition.check(value,values.line)) {
+		for (const [module, values] of modules.entries()) {
+			for (const value of values.tokens) {
+				for (const condition of conditions) {
+					if (condition.check(value, values.line)) {
 						value.tokenType = condition.type
 						break
 					}
@@ -258,7 +257,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		}
 		const getParsedToken = (value: TokenInfo): IParsedToken => {
 			let ty = ""
-			let modifiers ="documentation"
+			let modifiers = "documentation"
 			switch (value.tokenType) {
 				case TokenType.FunctionCall: ty = "function"; break;
 				case TokenType.Condition: ty = informations.has(value.name) ? "property" : "operator"; break;
@@ -268,30 +267,28 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 			}
 			const tokenType = this._encodeTokenType(ty)
 			const tokenModifiers = this._encodeTokenModifiers([modifiers])
-			return { startCharacter: value.startCharacter, length: value.length, line: value.line, tokenType:tokenType,tokenModifiers:tokenModifiers}
+			return { startCharacter: value.startCharacter, length: value.length, line: value.line, tokenType: tokenType, tokenModifiers: tokenModifiers }
 		}
 		for (const [module, values] of modules.entries()) {
 			for (const value of values.tokens) {
 				if (value.tokenType) {
 					r.push(getParsedToken(value))
 				}
-				
+
 			}
 		}
 		return r
 	}
-	private splitLine(line: string,lineIndex:number): TokenInfo[]
-	{
+	private splitLine(line: string, lineIndex: number): TokenInfo[] {
 		const re: RegExp = /[a-zA-Z0-9\u4e00-\u9fa5]+/g
 		const l: TokenInfo[] = []
 		let res = re.exec(line)
-		while (res!= null)
-		{
+		while (res != null) {
 			if (res.length > 0 && res[0].length && isNaN(parseFloat(res[0]))) {
-				l.push({name:res[0], startCharacter:res.index,line:lineIndex,length:res[0].length})
+				l.push({ name: res[0], startCharacter: res.index, line: lineIndex, length: res[0].length })
 			}
 			res = re.exec(line)
-		} 
+		}
 		return l
 	}
 	private _encodeTokenType(tokenType: string): number {
