@@ -7,7 +7,7 @@
 			"include": "#keywords"
 		},
 		{
-			"match": "^\t([^:]+)(:)(.+)",
+			"match": "^\t([^:]+)(:)(.*)",
 			"captures": {
 				"1": {
 					"name": "entity.name.class"
