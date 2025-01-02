@@ -50,8 +50,7 @@ const tokenTypes = new Map<string, number>();
 const tokenModifiers = new Map<string, number>();
 interface Value { line: string, tokens: TokenInfo[], doc: string,position:vscode.Position}
 const currentFileModules = new Map<string, Value>();
-const informations = new Map<string, string>()
-const moduleNames = new Map<string, string>()
+const moduleNames = new Map<string,{ty:string,doc:string}>()
 const comments = new Set<number>()
 const moduleStartPrefix = new Set(["->", ":", "=>", "]", "】", "、", "："])
 const computeStartPrefix = new Set([">", "<", "=", "%", "+", "-", "*", "/", "|", "&", ",", "，"])
@@ -75,17 +74,17 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 			if (moduleNames.has(word)) {
 				for (const [key, value] of moduleNames.entries()) {
 					const item1 = new vscode.CompletionItem(key, vscode.CompletionItemKind.Text);
-					item1.detail = value;
+					item1.detail = value.doc;
 					item1.documentation = '插入 ' + key;
 					item1.insertText = key;
 					completionItems.push(item1);
 				}
 			}
 			else {
-				for (const [key, value] of informations.entries()) {
+				for (const [key, value] of moduleNames.entries()) {
 					if (!moduleNames.has(key)) {
 						const item1 = new vscode.CompletionItem(key, vscode.CompletionItemKind.Text);
-						item1.detail = value;
+						item1.detail = value.doc;
 						item1.documentation = '插入 ' + key;
 						item1.insertText = key;
 						completionItems.push(item1);
@@ -103,13 +102,14 @@ class HoverProvider implements vscode.HoverProvider {
 		const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5]+/g);
 		if (range) {
 			const word = document.getText(range);
-			if (informations.has(word)) {
-				return new vscode.Hover(new vscode.MarkdownString("#### 导入模块\n* "  + informations.get(word) as string));
+			if (moduleNames.has(word)) {
+				const info =  moduleNames.get(word)
+				return new vscode.Hover(new vscode.MarkdownString("#### "+info?.ty+"\n* "  + info?.doc as string));
 			}
 			else if (currentFileModules.has(word)) {
 				const value:Value|undefined = currentFileModules.get(word)
 				if (value) {
-					return new vscode.Hover(new vscode.MarkdownString(value.doc || `#### 模块\n* 第${ value.position.line + 1}行`, true))
+					return new vscode.Hover(new vscode.MarkdownString(value.doc || `#### 本地模块\n* 第${ value.position.line + 1}行`, true))
 				}
 				
 			}
@@ -191,22 +191,21 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		const includeFilename = path.join(path.dirname(document.fileName), "Documents", path.basename(document.fileName).replace(/\.\w+$/, "") + ".ldoc")
 
 		const file = await vscode.workspace.fs.readFile(vscode.Uri.file(includeFilename))
-		informations.clear()
 		moduleNames.clear()
 		if (file) {
 			const lines = file.toString().split(/\r\n|\r|\n/);
-			let typeIndex = 0
+			let ty = ""
 			lines.forEach(l => {
-				if (l.startsWith("\t")) {
-					const [key, doc] = l.slice(1).split(":")
-					informations.set(key, doc)
-					if (typeIndex == 1) {
-						moduleNames.set(key, doc)
+				if (l.length) {
+					if (l.startsWith("\t")) {
+						const [key, doc] = l.slice(1).split(":")
+						moduleNames.set(key,{ty:ty,doc:doc})
+					}
+					else {
+						ty = l.slice(0,l.length -1)
 					}
 				}
-				else {
-					typeIndex++
-				}
+			
 			})
 		}
 		const allTokens = this._parseText(document.getText());
@@ -257,7 +256,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		}
 		const conditions: { check: (value: TokenInfo, line: string) => boolean, type: TokenType }[] = [
 			{
-				check: (value, line) => { return currentFileModules.has(value.name) || informations.has(value.name) },
+				check: (value, line) => { return currentFileModules.has(value.name) || moduleNames.has(value.name) },
 				type: TokenType.FunctionCall
 			},
 			{
@@ -288,8 +287,8 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 			let modifiers = "documentation"
 			switch (value.tokenType) {
 				case TokenType.FunctionCall: ty = "function"; break;
-				case TokenType.Condition: ty = informations.has(value.name) ? "property" : "operator"; break;
-				case TokenType.Paramters: ty = informations.has(value.name) ? "number" : "operator"; break;
+				case TokenType.Condition: ty = moduleNames.has(value.name) ? "property" : "operator"; break;
+				case TokenType.Paramters: ty = moduleNames.has(value.name) ? "number" : "operator"; break;
 				case TokenType.needImplement: ty = "operator"; break;
 
 			}
