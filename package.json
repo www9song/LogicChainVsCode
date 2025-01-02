@@ -13,9 +13,10 @@
 	"categories": [
 		"Programming Languages"
 	],
-	"exclude": [
-		"node_modules/",
-		"sample"
+	"files": [
+		"out/",
+		"package.json",
+		"README.md"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
