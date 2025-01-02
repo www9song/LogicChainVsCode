@@ -256,7 +256,16 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		}
 		const conditions: { check: (value: TokenInfo, line: string) => boolean, type: TokenType }[] = [
 			{
-				check: (value, line) => { return currentFileModules.has(value.name) || moduleNames.has(value.name) },
+				check: (value, line) => { 
+					if (currentFileModules.has(value.name)) {
+						return true
+					}
+					const info = moduleNames.get(value.name)
+					if (info) {
+						return info.ty.includes("模块")
+					}
+					return  false
+				},
 				type: TokenType.FunctionCall
 			},
 			{
