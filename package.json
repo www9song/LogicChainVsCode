@@ -2,7 +2,7 @@
 	"name": "logical",
 	"displayName": "LogicChain",
 	"description": "逻辑链条,梳理逻辑用",
-	"version": "0.17.0",
+	"version": "0.18.0",
 	"publisher": "LogicChain",
 	"private": true,
 	"license": "MIT",
@@ -13,7 +13,7 @@
 	"categories": [
 		"Programming Languages"
 	],
-	"exclude":[
+	"exclude": [
 		"node_modules/",
 		"sample"
 	],
