@@ -19,8 +19,7 @@
 			{
 				"id": "LogicChain",
 				"aliases": [
-					"LogicChain",
-					"LC"
+					"LogicChain"
 				],
 				"extensions": [
 					".logic",
