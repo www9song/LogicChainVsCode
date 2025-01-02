@@ -189,31 +189,37 @@ interface TokenInfo {
 class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensProvider {
 	async provideDocumentSemanticTokens(document: vscode.TextDocument, _token: vscode.CancellationToken): Promise<vscode.SemanticTokens> {
 		const includeFilename = path.join(path.dirname(document.fileName), "Documents", path.basename(document.fileName).replace(/\.\w+$/, "") + ".ldoc")
-
-		const file = await vscode.workspace.fs.readFile(vscode.Uri.file(includeFilename))
 		moduleNames.clear()
-		if (file) {
-			const lines = file.toString().split(/\r\n|\r|\n/);
-			let ty = ""
-			lines.forEach(l => {
-				if (l.length) {
-					if (l.startsWith("\t")) {
-						const [key, doc] = l.slice(1).split(":")
-						moduleNames.set(key,{ty:ty,doc:doc})
+		try 
+		{
+			const file = await vscode.workspace.fs.readFile(vscode.Uri.file(includeFilename))
+			if (file) {
+				const lines = file.toString().split(/\r\n|\r|\n/);
+				let ty = ""
+				lines.forEach(l => {
+					if (l.length) {
+						if (l.startsWith("\t")) {
+							const [key, doc] = l.slice(1).split(":")
+							moduleNames.set(key,{ty:ty,doc:doc})
+						}
+						else {
+							ty = l.slice(0,l.length -1)
+						}
 					}
-					else {
-						ty = l.slice(0,l.length -1)
-					}
-				}
-			
-			})
+				
+				})
+			}
 		}
-		const allTokens = this._parseText(document.getText());
-		const builder = new vscode.SemanticTokensBuilder();
-		allTokens.forEach((token) => {
-			builder.push(token.line, token.startCharacter, token.length, token.tokenType, token.tokenModifiers);
-		});
-		return builder.build();
+		finally{
+			
+			const allTokens = this._parseText(document.getText());
+			const builder = new vscode.SemanticTokensBuilder();
+			allTokens.forEach((token) => {
+				builder.push(token.line, token.startCharacter, token.length, token.tokenType, token.tokenModifiers);
+			});
+			return builder.build();
+		}
+		
 	}
 
 	private _parseText(text: string): IParsedToken[] {
