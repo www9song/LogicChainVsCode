@@ -40,8 +40,8 @@
 					".ldoc"
 				],
 				"icon": {
-					"light": "./icon.svg",
-					"dark": "./icon.svg"
+					"light": "./doc.svg",
+					"dark": "./doc.svg"
 				}
 			}
 		],

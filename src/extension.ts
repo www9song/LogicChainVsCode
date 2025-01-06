@@ -140,6 +140,23 @@ class DefinitionProvider implements vscode.DefinitionProvider {
 		return null
 	}
 }
+class ReferenceProvider implements vscode.ReferenceProvider {
+    provideReferences(
+		document: vscode.TextDocument, position: vscode.Position, context: vscode.ReferenceContext, token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.Location[]> {
+        // 这里是查找引用的逻辑
+		const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5]+/g);
+		if (wordRange) {
+			const word = document.getText(wordRange);
+			const locations: vscode.Location[] = [];
+			const referenceLocation = new vscode.Location(document.uri, new vscode.Position(0, 0));
+			locations.push(referenceLocation);
+			
+			return locations
+		}
+    }
+}
+
 export function activate(context: vscode.ExtensionContext) {
 	const defaultTokenTypes = [
 		'comment', 'string', 'keyword', 'number', 'regexp', 'operator', 'namespace',
