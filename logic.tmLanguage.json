@@ -83,7 +83,7 @@
 			"patterns": [
 				{
 				"name": "keyword.control",
-				"match": "[-=]>"
+				"match": "[-=][>》]"
 				},
 				{
 					"name":"keyword.control",

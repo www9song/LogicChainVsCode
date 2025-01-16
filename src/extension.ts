@@ -99,7 +99,7 @@ class CompletionItemProvider implements vscode.CompletionItemProvider {
 class HoverProvider implements vscode.HoverProvider {
 	provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Hover> {
 
-		const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5]+/g);
+		const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5\._]+/g);
 		if (range) {
 			const word = document.getText(range);
 			if (moduleNames.has(word)) {
@@ -123,14 +123,14 @@ class HoverProvider implements vscode.HoverProvider {
 }
 class DefinitionProvider implements vscode.DefinitionProvider {
 	provideDefinition(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): vscode.ProviderResult<vscode.Definition | vscode.DefinitionLink[]> {
-		const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5]+/g);
+		const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5\._]+/g);
 		if (wordRange) {
 			const word = document.getText(wordRange);
 			// 根据逻辑查找符号的定义
 			if (currentFileModules.has(word)) {
 				const value:Value|undefined = currentFileModules.get(word)
 				if (value) {
-					const range = document.getWordRangeAtPosition(value.position, /[a-zA-Z0-9\u4e00-\u9fa5]+/g)
+					const range = document.getWordRangeAtPosition(value.position, /[a-zA-Z0-9\u4e00-\u9fa5\._]+/g)
 					if (range) {
 						return {range:range,uri:document.uri}
 					}
@@ -339,7 +339,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		return r
 	}
 	private splitLine(line: string, lineIndex: number): TokenInfo[] {
-		const re: RegExp = /\s*[a-zA-Z0-9\u4e00-\u9fa5]+/g
+		const re: RegExp = /\s*[a-zA-Z0-9\u4e00-\u9fa5\._]+/g
 		const l: TokenInfo[] = []
 		let res = re.exec(line)
 		while (res != null) {

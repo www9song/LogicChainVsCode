@@ -38,7 +38,7 @@
 		],
 		[
 			"（",
-			"）："
+			"）"
 		],
 	],
 	// symbols that can be used to surround a selection
@@ -60,6 +60,6 @@
 			"）"
 		],
 	],
-	"wordPattern": "[a-zA-Z0-9\u4e00-\u9fa5]+"
+	"wordPattern": "[a-zA-Z0-9\u4e00-\u9fa5\\._]+"
 
 }
