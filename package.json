@@ -56,6 +56,16 @@
 				"scopeName": "source.ldoc",
 				"path": "./logic-document.json"
 			}
+		],
+		"semanticTokenScopes": [
+			{
+				"language": "LogicChain",
+				"scopes": {
+					"function": [
+						"strong"
+					]
+				}
+			}
 		]
 	},
 	"scripts": {

@@ -145,7 +145,7 @@ class ReferenceProvider implements vscode.ReferenceProvider {
 		document: vscode.TextDocument, position: vscode.Position, context: vscode.ReferenceContext, token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.Location[]> {
         // 这里是查找引用的逻辑
-		const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5]+/g);
+		const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9\u4e00-\u9fa5\._]+/g);
 		if (wordRange) {
 			const word = document.getText(wordRange);
 			const locations: vscode.Location[] = [];
@@ -190,6 +190,7 @@ interface IParsedToken {
 }
 enum TokenType {
 	FunctionCall,
+	BaseImplement,
 	Condition,
 	Paramters,
 	needImplement
@@ -283,13 +284,19 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 					if (currentFileModules.has(value.name)) {
 						return true
 					}
+					return false
+				},
+				type: TokenType.FunctionCall
+			},
+			{
+				check: (value, line) => {
 					const info = moduleNames.get(value.name)
 					if (info) {
 						return info.ty.includes("模块")
 					}
-					return  false
+					return false
 				},
-				type: TokenType.FunctionCall
+				type: TokenType.BaseImplement
 			},
 			{
 				check: (value, line) => { return isInRange(line, "[", "]", value) || isInRange(line, '【', '】', value) },
@@ -314,11 +321,13 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 				}
 			}
 		}
-		const getParsedToken = (value: TokenInfo): IParsedToken => {
+		const getParsedToken = (value: TokenInfo): IParsedToken[] => {
 			let ty = ""
 			let modifiers = "documentation"
+			const l: IParsedToken[] = []
 			switch (value.tokenType) {
 				case TokenType.FunctionCall: ty = "function"; break;
+				case TokenType.BaseImplement: ty = "function"; break;
 				case TokenType.Condition: ty = moduleNames.has(value.name) ? "property" : "operator"; break;
 				case TokenType.Paramters: ty = moduleNames.has(value.name) ? "number" : "operator"; break;
 				case TokenType.needImplement: ty = "operator"; break;
@@ -326,14 +335,14 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 			}
 			const tokenType = this._encodeTokenType(ty)
 			const tokenModifiers = this._encodeTokenModifiers([modifiers])
-			return { startCharacter: value.startCharacter, length: value.length, line: value.line, tokenType: tokenType, tokenModifiers: tokenModifiers }
+			l.push({ startCharacter: value.startCharacter, length: value.length, line: value.line, tokenType: tokenType, tokenModifiers: tokenModifiers })
+			return l
 		}
 		for (const [module, values] of currentFileModules.entries()) {
 			for (const value of values.tokens) {
-				if (value.tokenType) {
-					r.push(getParsedToken(value))
+				if (value.tokenType != TokenType.FunctionCall) {
+					r.push(...getParsedToken(value))
 				}
-
 			}
 		}
 		return r
@@ -355,9 +364,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 	private _encodeTokenType(tokenType: string): number {
 		if (tokenTypes.has(tokenType)) {
 			return tokenTypes.get(tokenType)!;
-		} else if (tokenType === 'notInLegend') {
-			return tokenTypes.size + 2;
-		}
+		} 
 		return 0;
 	}
 
@@ -366,9 +373,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
 		for (const tokenModifier of strTokenModifiers) {
 			if (tokenModifiers.has(tokenModifier)) {
 				result = result | (1 << tokenModifiers.get(tokenModifier)!);
-			} else if (tokenModifier === 'notInLegend') {
-				result = result | (1 << tokenModifiers.size + 2);
-			}
+			} 
 		}
 		return result;
 	}
