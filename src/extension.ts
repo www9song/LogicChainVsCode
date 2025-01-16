@@ -176,7 +176,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.languages.registerHoverProvider('LogicChain', new HoverProvider()));
 
 	// 注册 Hover 提供者
-	context.subscriptions.push(vscode.languages.registerCompletionItemProvider('LogicChain', new CompletionItemProvider(), ...moduleStartPrefix, ...computeStartPrefix));
+	context.subscriptions.push(vscode.languages.registerCompletionItemProvider('LogicChain', new CompletionItemProvider()));
 	// 注册 Definition 提供者
 	context.subscriptions.push(vscode.languages.registerDefinitionProvider('LogicChain', new DefinitionProvider()));
 }
