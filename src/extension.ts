@@ -166,6 +166,19 @@ export function activate(context: vscode.ExtensionContext) {
 	const defaultTokenModifiers = ['declaration', 'documentation', 'readonly', 'static', 'abstract', 'deprecated', 'modification', 'async']
 	defaultTokenTypes.forEach((type, i) => tokenTypes.set(type, i))
 	defaultTokenModifiers.forEach((type, i) => tokenModifiers.set(type, i))
+
+	const disposable = vscode.workspace.onDidChangeTextDocument(event => {
+		const document = event.document;
+		if (document.uri.fsPath.endsWith(".ldoc")) {
+			const lines = document.getText().split(/\r\n|\r|\n/);
+			// event.contentChanges.forEach(change => {
+			// 	console.log(`更改位置: ${change.range.start.line}:${change.range.start.character}`);
+			// 	console.log(`更改后的文本: ${change.text}`);
+			// });
+			updateModuleNames(lines)
+		}
+	});
+
 	context.subscriptions.push(vscode.languages.registerDocumentSemanticTokensProvider({ language: 'LogicChain' }, new DocumentSemanticTokensProvider(), {
 		tokenTypes: defaultTokenTypes,
 		tokenModifiers: defaultTokenModifiers,
@@ -203,29 +216,46 @@ interface TokenInfo {
 	tokenType?: TokenType
 }
 
-
+function updateModuleNames(lines: string[]) {
+	let ty = ""
+	moduleNames.clear()
+	lines.forEach(l => {
+		if (l.length) {
+			if (l.startsWith("\t")) {
+				const [key, doc] = l.slice(1).split(":")
+				moduleNames.set(key, { ty: ty, doc: doc })
+			}
+			else {
+				ty = l.slice(0, l.length - 1)
+			}
+		}
+	})
+}
+async function fileExists(uri: vscode.Uri): Promise<boolean> {
+	try {
+		await vscode.workspace.fs.stat(uri);
+		return true;
+	} catch (error) {
+		if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+			return false;
+		}
+		throw error;
+	}
+}
 class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensProvider {
 	async provideDocumentSemanticTokens(document: vscode.TextDocument, _token: vscode.CancellationToken): Promise<vscode.SemanticTokens> {
-		const includeFilename = path.join(path.dirname(document.fileName), "Documents", path.basename(document.fileName).replace(/\.\w+$/, "") + ".ldoc")
-		moduleNames.clear()
-		try 
-		{
-			const file = await vscode.workspace.fs.readFile(vscode.Uri.file(includeFilename))
+
+		try {
+			const includeFilename = path.join(path.dirname(document.fileName), "Documents", path.basename(document.fileName).replace(/\.\w+$/, "") + ".ldoc")
+			let file = null
+			if (await fileExists(vscode.Uri.file(includeFilename))) {
+				file = await vscode.workspace.fs.readFile(vscode.Uri.file(includeFilename))
+			} else {
+				file = await vscode.workspace.fs.readFile(vscode.Uri.file(path.join(path.dirname(document.fileName), "Documents", "default.ldoc")))
+			}
 			if (file) {
 				const lines = file.toString().split(/\r\n|\r|\n/);
-				let ty = ""
-				lines.forEach(l => {
-					if (l.length) {
-						if (l.startsWith("\t")) {
-							const [key, doc] = l.slice(1).split(":")
-							moduleNames.set(key,{ty:ty,doc:doc})
-						}
-						else {
-							ty = l.slice(0,l.length -1)
-						}
-					}
-				
-				})
+				updateModuleNames(lines)
 			}
 		}
 		finally{
